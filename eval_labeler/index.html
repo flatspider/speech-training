@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FDR Eval Labeler</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --panel: #fffdf8;
+      --panel-strong: #f0e7d3;
+      --text: #241c14;
+      --muted: #6d6359;
+      --accent: #8e2f24;
+      --accent-soft: #f6d8d1;
+      --line: #d8c8ac;
+      --ok: #255f38;
+      --warn: #8c5a16;
+      --bad: #8d2e2b;
+      --shadow: 0 16px 40px rgba(36, 28, 20, 0.08);
+      --font-ui: "Avenir Next", "Segoe UI", sans-serif;
+      --font-display: Georgia, "Times New Roman", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(142, 47, 36, 0.08), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(37, 95, 56, 0.08), transparent 25%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+    }
+
+    .shell {
+      width: min(1380px, calc(100vw - 32px));
+      margin: 24px auto 40px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(141, 108, 63, 0.18);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      display: grid;
+      gap: 16px;
+      padding: 24px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 231, 211, 0.92)),
+        var(--panel);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: start;
+      flex-wrap: wrap;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 3vw, 3rem);
+      line-height: 1;
+    }
+
+    h2 {
+      font-size: 1.3rem;
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      max-width: 72ch;
+      line-height: 1.5;
+    }
+
+    .pill-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .pill {
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(141, 108, 63, 0.18);
+      color: var(--muted);
+    }
+
+    .status-banner {
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: var(--panel-strong);
+      color: var(--text);
+      border: 1px solid rgba(141, 108, 63, 0.18);
+      font-size: 0.95rem;
+    }
+
+    .status-banner.error {
+      background: #f9e3dd;
+      border-color: rgba(141, 46, 43, 0.28);
+      color: var(--bad);
+    }
+
+    .status-banner.success {
+      background: #e3f2e7;
+      border-color: rgba(37, 95, 56, 0.28);
+      color: var(--ok);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .control-card {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.84);
+      display: grid;
+      gap: 10px;
+      min-height: 100%;
+    }
+
+    .control-card label {
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .control-card input[type="file"] {
+      width: 100%;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button, .ghost-link {
+      appearance: none;
+      border: 1px solid rgba(36, 28, 20, 0.1);
+      background: white;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
+    }
+
+    button:hover, .ghost-link:hover {
+      transform: translateY(-1px);
+      border-color: rgba(36, 28, 20, 0.2);
+      box-shadow: 0 8px 20px rgba(36, 28, 20, 0.08);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+      transform: none;
+      box-shadow: none;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    button.secondary {
+      background: var(--panel-strong);
+    }
+
+    button.warn {
+      background: #fff2df;
+      color: var(--warn);
+      border-color: rgba(140, 90, 22, 0.22);
+    }
+
+    button.danger {
+      background: #f9e3dd;
+      color: var(--bad);
+      border-color: rgba(141, 46, 43, 0.24);
+    }
+
+    .dashboard {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .section {
+      padding: 20px;
+    }
+
+    .metric-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .metric {
+      border-radius: 14px;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(240, 231, 211, 0.55), rgba(255, 255, 255, 0.85));
+      border: 1px solid var(--line);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+    }
+
+    .metric-value {
+      font-size: 1.7rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+    }
+
+    .case-meta {
+      display: grid;
+      gap: 12px;
+    }
+
+    .meta-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .meta-item {
+      padding: 12px;
+      border-radius: 14px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+    }
+
+    .meta-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 5px;
+    }
+
+    .prompt-box, .cue-box, .notes-area, .response-text {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: white;
+      padding: 14px;
+      line-height: 1.6;
+    }
+
+    .prompt-box {
+      font-size: 1rem;
+    }
+
+    details {
+      border: 1px dashed rgba(141, 108, 63, 0.38);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .cue-columns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .cue-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+
+    .responses {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+    }
+
+    .response-card {
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(141, 108, 63, 0.18);
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,241,232,0.72));
+    }
+
+    .response-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .response-heading span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .response-text {
+      min-height: 280px;
+      white-space: pre-wrap;
+    }
+
+    .rubric-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .rubric-row {
+      display: grid;
+      gap: 8px;
+      align-items: center;
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .rubric-label {
+      font-size: 0.94rem;
+      color: var(--text);
+    }
+
+    .score-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .score-btn, .pairwise-btn, .tag-btn {
+      min-width: 42px;
+      padding: 8px 10px;
+      border-radius: 10px;
+    }
+
+    .score-btn.active, .pairwise-btn.active, .tag-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      box-shadow: 0 10px 18px rgba(142, 47, 36, 0.22);
+    }
+
+    .score-btn.focused {
+      outline: 2px solid rgba(142, 47, 36, 0.24);
+      outline-offset: 2px;
+    }
+
+    .pairwise-wrap {
+      display: grid;
+      gap: 14px;
+    }
+
+    .pairwise-btn {
+      min-width: 92px;
+    }
+
+    .notes-area {
+      min-height: 110px;
+      resize: vertical;
+      font: inherit;
+    }
+
+    .analysis-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .analysis-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.84);
+      padding: 14px;
+    }
+
+    .delta-positive {
+      color: var(--ok);
+    }
+
+    .delta-negative {
+      color: var(--bad);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .small {
+      font-size: 0.88rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1100px) {
+      .controls-grid,
+      .dashboard,
+      .responses,
+      .meta-grid,
+      .cue-columns,
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .shell {
+        width: min(100vw - 20px, 100%);
+        margin: 10px auto 28px;
+      }
+
+      .hero,
+      .section {
+        padding: 16px;
+      }
+
+      .button-row,
+      .pill-row {
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="panel hero">
+      <div class="hero-top">
+        <div>
+          <h1>FDR Eval Labeler</h1>
+          <p class="subtitle">
+            Load pre-generated model outputs, judge them one case at a time, keep the comparison blinded,
+            and export a single <code>human_labels.json</code> file for notebook analysis.
+          </p>
+        </div>
+        <div class="pill-row">
+          <div class="pill">Keys: <strong>1-5</strong> score, <strong>A/T/B</strong> winner, arrows navigate</div>
+          <div class="pill">Autosaves to browser storage</div>
+          <div class="pill">No backend required</div>
+        </div>
+      </div>
+      <div id="statusBanner" class="status-banner">Load an eval JSON file to begin.</div>
+      <div class="controls-grid">
+        <div class="control-card">
+          <label for="evalFileInput">Eval input JSON</label>
+          <input id="evalFileInput" type="file" accept=".json,application/json">
+          <div class="small muted">Expected file: <code>fdr_eval_generations.json</code></div>
+        </div>
+        <div class="control-card">
+          <label for="labelsFileInput">Resume labels JSON</label>
+          <input id="labelsFileInput" type="file" accept=".json,application/json">
+          <div class="small muted">Optional: import a previous <code>human_labels.json</code>.</div>
+        </div>
+        <div class="control-card">
+          <div class="small muted">Session</div>
+          <div id="sessionInfo" class="small">No active session</div>
+          <div class="button-row">
+            <button id="restoreBtn" class="secondary">Restore Autosave</button>
+            <button id="resetBtn" class="danger">Reset Session</button>
+          </div>
+        </div>
+        <div class="control-card">
+          <div class="small muted">Export</div>
+          <div id="exportInfo" class="small">Exports are disabled until a dataset is loaded.</div>
+          <div class="button-row">
+            <button id="exportBtn" class="primary">Export Labels</button>
+            <button id="jumpBtn" class="secondary">Jump to First Incomplete</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dashboard">
+      <div class="stack">
+        <section class="panel section">
+          <h2>Progress</h2>
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric-label">Completed</div>
+              <div id="metricCompleted" class="metric-value">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Skipped</div>
+              <div id="metricSkipped" class="metric-value">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Remaining</div>
+              <div id="metricRemaining" class="metric-value">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Current Case</div>
+              <div id="metricCurrent" class="metric-value">0 / 0</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel section">
+          <h2>Analysis</h2>
+          <div class="analysis-grid">
+            <div class="analysis-card">
+              <h3>Pairwise Wins</h3>
+              <div id="winsSummary" class="small muted">Load a dataset to see results.</div>
+            </div>
+            <div class="analysis-card">
+              <h3>Average Rubric</h3>
+              <div id="rubricSummary" class="small muted">No scores yet.</div>
+            </div>
+            <div class="analysis-card">
+              <h3>Completion Health</h3>
+              <div id="healthSummary" class="small muted">No active dataset.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="stack">
+        <section class="panel section">
+          <div class="button-row" style="justify-content: space-between; margin-bottom: 12px;">
+            <h2>Case</h2>
+            <div class="button-row">
+              <button id="prevBtn" class="secondary">Previous</button>
+              <button id="skipBtn" class="warn">Mark Skipped / Needs Review</button>
+              <button id="nextBtn" class="secondary">Next</button>
+            </div>
+          </div>
+
+          <div class="case-meta">
+            <div class="meta-grid">
+              <div class="meta-item">
+                <div class="meta-label">Case ID</div>
+                <div id="metaId">-</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Category</div>
+                <div id="metaCategory">-</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Domain / Type</div>
+                <div id="metaDomainType">-</div>
+              </div>
+            </div>
+            <div>
+              <div class="meta-label">Prompt</div>
+              <div id="promptText" class="prompt-box">Load a dataset to begin.</div>
+            </div>
+            <details>
+              <summary>Expected keywords and forbidden signals</summary>
+              <div class="cue-columns">
+                <div>
+                  <div class="meta-label">Expected Keywords</div>
+                  <ul id="expectedKeywords" class="cue-list"></ul>
+                </div>
+                <div>
+                  <div class="meta-label">Forbidden Signals</div>
+                  <ul id="forbiddenSignals" class="cue-list"></ul>
+                </div>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <section class="responses">
+          <section class="panel response-card">
+            <div class="response-heading">
+              <div>
+                <h2>Response A</h2>
+                <span>Model identity is hidden until analysis.</span>
+              </div>
+            </div>
+            <div id="responseA" class="response-text">Load a dataset to begin.</div>
+            <div id="rubricA" class="rubric-grid"></div>
+          </section>
+
+          <section class="panel response-card">
+            <div class="response-heading">
+              <div>
+                <h2>Response B</h2>
+                <span>Use the same rubric for both candidates.</span>
+              </div>
+            </div>
+            <div id="responseB" class="response-text">Load a dataset to begin.</div>
+            <div id="rubricB" class="rubric-grid"></div>
+          </section>
+        </section>
+
+        <section class="panel section">
+          <h2>Comparative Judgment</h2>
+          <div class="pairwise-wrap">
+            <div class="button-row">
+              <button id="pairwiseA" class="pairwise-btn">A better</button>
+              <button id="pairwiseTie" class="pairwise-btn">Tie</button>
+              <button id="pairwiseB" class="pairwise-btn">B better</button>
+            </div>
+            <div>
+              <div class="meta-label">Failure mode tags</div>
+              <div id="tagButtons" class="button-row"></div>
+            </div>
+            <div>
+              <div class="meta-label">Notes</div>
+              <textarea id="notesInput" class="notes-area" placeholder="Short note on why one response won, or what failed."></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "fdr-eval-labeler-state-v1";
+    const RUBRIC_FIELDS = [
+      { key: "domain_alignment", label: "Domain Alignment" },
+      { key: "fdr_style_fidelity", label: "FDR Style Fidelity" },
+      { key: "coherence_completeness", label: "Coherence / Completeness" },
+      { key: "rhetorical_force", label: "Rhetorical Force" },
+      { key: "historical_register_consistency", label: "Historical Register Consistency" }
+    ];
+    const FAILURE_TAGS = [
+      "off-domain",
+      "too generic",
+      "copied/derivative",
+      "bad quote shape",
+      "incoherent",
+      "modern tone break"
+    ];
+
+    const state = {
+      cases: [],
+      currentIndex: 0,
+      annotationsById: {},
+      sessionMeta: null,
+      sourceFileName: "",
+      focusedRubric: { candidate: "A", field: RUBRIC_FIELDS[0].key }
+    };
+
+    const els = {
+      statusBanner: document.getElementById("statusBanner"),
+      sessionInfo: document.getElementById("sessionInfo"),
+      exportInfo: document.getElementById("exportInfo"),
+      evalFileInput: document.getElementById("evalFileInput"),
+      labelsFileInput: document.getElementById("labelsFileInput"),
+      restoreBtn: document.getElementById("restoreBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+      exportBtn: document.getElementById("exportBtn"),
+      jumpBtn: document.getElementById("jumpBtn"),
+      metricCompleted: document.getElementById("metricCompleted"),
+      metricSkipped: document.getElementById("metricSkipped"),
+      metricRemaining: document.getElementById("metricRemaining"),
+      metricCurrent: document.getElementById("metricCurrent"),
+      winsSummary: document.getElementById("winsSummary"),
+      rubricSummary: document.getElementById("rubricSummary"),
+      healthSummary: document.getElementById("healthSummary"),
+      prevBtn: document.getElementById("prevBtn"),
+      skipBtn: document.getElementById("skipBtn"),
+      nextBtn: document.getElementById("nextBtn"),
+      metaId: document.getElementById("metaId"),
+      metaCategory: document.getElementById("metaCategory"),
+      metaDomainType: document.getElementById("metaDomainType"),
+      promptText: document.getElementById("promptText"),
+      expectedKeywords: document.getElementById("expectedKeywords"),
+      forbiddenSignals: document.getElementById("forbiddenSignals"),
+      responseA: document.getElementById("responseA"),
+      responseB: document.getElementById("responseB"),
+      rubricA: document.getElementById("rubricA"),
+      rubricB: document.getElementById("rubricB"),
+      pairwiseA: document.getElementById("pairwiseA"),
+      pairwiseTie: document.getElementById("pairwiseTie"),
+      pairwiseB: document.getElementById("pairwiseB"),
+      tagButtons: document.getElementById("tagButtons"),
+      notesInput: document.getElementById("notesInput")
+    };
+
+    function makeUuid() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      return "session-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function readJsonFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            resolve(JSON.parse(reader.result));
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(reader.error || new Error("File read failed"));
+        reader.readAsText(file);
+      });
+    }
+
+    function setBanner(message, type = "") {
+      els.statusBanner.textContent = message;
+      els.statusBanner.className = "status-banner" + (type ? " " + type : "");
+    }
+
+    function defaultRubricScores() {
+      const scores = {};
+      for (const field of RUBRIC_FIELDS) {
+        scores[field.key] = null;
+      }
+      return scores;
+    }
+
+    function makeAnnotationForCase(evalCase, existingCaseResult = null) {
+      if (existingCaseResult) {
+        return {
+          id: evalCase.id,
+          display_order: existingCaseResult.display_order,
+          rubric_scores: existingCaseResult.rubric_scores || { A: defaultRubricScores(), B: defaultRubricScores() },
+          pairwise_choice: existingCaseResult.pairwise_choice || null,
+          notes: existingCaseResult.notes || { tags: [], comment: "" },
+          status: existingCaseResult.status || "pending",
+          labeled_at: existingCaseResult.labeled_at || null
+        };
+      }
+
+      const fineTunedAsA = Math.random() >= 0.5;
+      return {
+        id: evalCase.id,
+        display_order: {
+          A: fineTunedAsA ? "fine_tuned" : "baseline",
+          B: fineTunedAsA ? "baseline" : "fine_tuned"
+        },
+        rubric_scores: {
+          A: defaultRubricScores(),
+          B: defaultRubricScores()
+        },
+        pairwise_choice: null,
+        notes: { tags: [], comment: "" },
+        status: "pending",
+        labeled_at: null
+      };
+    }
+
+    function normalizeEvalCase(rawCase) {
+      const requiredFields = ["id", "category", "prompt_type", "domain", "prompt", "models"];
+      for (const field of requiredFields) {
+        if (!(field in rawCase)) {
+          throw new Error("Missing required field `" + field + "` in eval case.");
+        }
+      }
+      if (!rawCase.models.fine_tuned || !rawCase.models.baseline) {
+        throw new Error("Each eval case must include models.fine_tuned and models.baseline.");
+      }
+      for (const modelKey of ["fine_tuned", "baseline"]) {
+        const model = rawCase.models[modelKey];
+        if (typeof model.text !== "string") {
+          throw new Error("Model `" + modelKey + "` in case `" + rawCase.id + "` is missing a text field.");
+        }
+      }
+      return {
+        id: rawCase.id,
+        category: rawCase.category,
+        prompt_type: rawCase.prompt_type,
+        domain: rawCase.domain,
+        prompt: rawCase.prompt,
+        expected_keywords: Array.isArray(rawCase.expected_keywords) ? rawCase.expected_keywords : [],
+        forbidden_signals: Array.isArray(rawCase.forbidden_signals) ? rawCase.forbidden_signals : [],
+        notes: rawCase.notes || "",
+        models: {
+          fine_tuned: {
+            text: rawCase.models.fine_tuned.text,
+            raw_text: rawCase.models.fine_tuned.raw_text || rawCase.models.fine_tuned.text,
+            generation_meta: rawCase.models.fine_tuned.generation_meta || {}
+          },
+          baseline: {
+            text: rawCase.models.baseline.text,
+            raw_text: rawCase.models.baseline.raw_text || rawCase.models.baseline.text,
+            generation_meta: rawCase.models.baseline.generation_meta || {}
+          }
+        }
+      };
+    }
+
+    function buildSessionMeta(sourceFileName, importedLabels = null) {
+      if (importedLabels) {
+        return {
+          session_id: importedLabels.session_id || makeUuid(),
+          created_at: importedLabels.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          source_file_name: sourceFileName,
+          judge_id: importedLabels.judge_id || null
+        };
+      }
+      return {
+        session_id: makeUuid(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        source_file_name: sourceFileName,
+        judge_id: null
+      };
+    }
+
+    function annotationIsComplete(annotation) {
+      if (!annotation) return false;
+      if (annotation.status === "skipped") return false;
+      if (!annotation.pairwise_choice) return false;
+      for (const candidate of ["A", "B"]) {
+        for (const field of RUBRIC_FIELDS) {
+          const value = annotation.rubric_scores?.[candidate]?.[field.key];
+          if (!Number.isInteger(value) || value < 1 || value > 5) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function updateAnnotationStatus(annotation) {
+      if (!annotation) return;
+      if (annotation.status === "skipped") {
+        annotation.labeled_at = annotation.labeled_at || new Date().toISOString();
+        return;
+      }
+      if (annotationIsComplete(annotation)) {
+        annotation.status = "complete";
+        annotation.labeled_at = new Date().toISOString();
+      } else {
+        annotation.status = hasAnyAnnotation(annotation) ? "in_progress" : "pending";
+        annotation.labeled_at = annotation.labeled_at || null;
+      }
+    }
+
+    function hasAnyAnnotation(annotation) {
+      if (!annotation) return false;
+      if (annotation.pairwise_choice) return true;
+      if ((annotation.notes?.comment || "").trim()) return true;
+      if ((annotation.notes?.tags || []).length) return true;
+      for (const candidate of ["A", "B"]) {
+        for (const field of RUBRIC_FIELDS) {
+          if (annotation.rubric_scores?.[candidate]?.[field.key] != null) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function buildExportPayload() {
+      const caseResults = state.cases.map((evalCase) => {
+        const annotation = state.annotationsById[evalCase.id];
+        updateAnnotationStatus(annotation);
+        return {
+          id: annotation.id,
+          display_order: annotation.display_order,
+          rubric_scores: annotation.rubric_scores,
+          pairwise_choice: annotation.pairwise_choice,
+          notes: annotation.notes,
+          status: annotation.status,
+          labeled_at: annotation.labeled_at
+        };
+      });
+      state.sessionMeta.updated_at = new Date().toISOString();
+      return {
+        session_id: state.sessionMeta.session_id,
+        created_at: state.sessionMeta.created_at,
+        updated_at: state.sessionMeta.updated_at,
+        source_file_name: state.sourceFileName,
+        judge_id: state.sessionMeta.judge_id,
+        case_results: caseResults
+      };
+    }
+
+    function saveToLocalStorage() {
+      if (!state.sessionMeta || !state.cases.length) return;
+      state.sessionMeta.updated_at = new Date().toISOString();
+      const payload = {
+        cases: state.cases,
+        currentIndex: state.currentIndex,
+        annotationsById: state.annotationsById,
+        sessionMeta: state.sessionMeta,
+        sourceFileName: state.sourceFileName
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      updateSessionInfo();
+    }
+
+    function restoreFromLocalStorage() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        setBanner("No autosaved session was found in this browser.", "error");
+        return;
+      }
+      try {
+        const saved = JSON.parse(raw);
+        if (!Array.isArray(saved.cases) || !saved.sessionMeta) {
+          throw new Error("Autosave data is incomplete.");
+        }
+        state.cases = saved.cases;
+        state.currentIndex = Math.min(saved.currentIndex || 0, Math.max(saved.cases.length - 1, 0));
+        state.annotationsById = saved.annotationsById || {};
+        state.sessionMeta = saved.sessionMeta;
+        state.sourceFileName = saved.sourceFileName || state.sessionMeta.source_file_name || "";
+        hydrateMissingAnnotations();
+        render();
+        setBanner("Autosaved session restored.", "success");
+      } catch (error) {
+        setBanner("Could not restore autosave: " + error.message, "error");
+      }
+    }
+
+    function hydrateMissingAnnotations() {
+      for (const evalCase of state.cases) {
+        const existing = state.annotationsById[evalCase.id];
+        state.annotationsById[evalCase.id] = makeAnnotationForCase(evalCase, existing);
+        updateAnnotationStatus(state.annotationsById[evalCase.id]);
+      }
+    }
+
+    async function handleEvalFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const parsed = await readJsonFile(file);
+        const cases = Array.isArray(parsed) ? parsed.map(normalizeEvalCase) : (parsed.cases || parsed.eval_cases || []).map(normalizeEvalCase);
+        if (!cases.length) {
+          throw new Error("No eval cases were found in the selected JSON file.");
+        }
+        state.cases = cases;
+        state.currentIndex = 0;
+        state.annotationsById = {};
+        state.sourceFileName = file.name;
+        state.sessionMeta = buildSessionMeta(file.name);
+        hydrateMissingAnnotations();
+        saveToLocalStorage();
+        render();
+        maybeApplyStagedLabels();
+        setBanner("Loaded " + cases.length + " eval cases.", "success");
+      } catch (error) {
+        setBanner("Could not load eval file: " + error.message, "error");
+      } finally {
+        event.target.value = "";
+      }
+    }
+
+    async function handleLabelsFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const parsed = await readJsonFile(file);
+        if (!Array.isArray(parsed.case_results)) {
+          throw new Error("Expected a human_labels.json file with a case_results array.");
+        }
+        if (!state.cases.length) {
+          state.sessionMeta = buildSessionMeta(parsed.source_file_name || "", parsed);
+          setBanner("Labels loaded. Now load the matching eval JSON to resume rendering the cases.", "success");
+          localStorage.setItem(STORAGE_KEY + "-labels-staging", JSON.stringify(parsed));
+          return;
+        }
+        mergeLabelsIntoState(parsed);
+        setBanner("Imported prior labels into the current session.", "success");
+      } catch (error) {
+        setBanner("Could not load labels file: " + error.message, "error");
+      } finally {
+        event.target.value = "";
+      }
+    }
+
+    function mergeLabelsIntoState(parsed) {
+      const byId = Object.fromEntries(parsed.case_results.map((result) => [result.id, result]));
+      for (const evalCase of state.cases) {
+        const prior = byId[evalCase.id];
+        if (prior) {
+          state.annotationsById[evalCase.id] = makeAnnotationForCase(evalCase, prior);
+        }
+      }
+      state.sessionMeta = buildSessionMeta(state.sourceFileName || parsed.source_file_name || "", parsed);
+      saveToLocalStorage();
+      render();
+    }
+
+    function maybeApplyStagedLabels() {
+      const raw = localStorage.getItem(STORAGE_KEY + "-labels-staging");
+      if (!raw || !state.cases.length) return;
+      try {
+        const parsed = JSON.parse(raw);
+        mergeLabelsIntoState(parsed);
+        localStorage.removeItem(STORAGE_KEY + "-labels-staging");
+        setBanner("Matched staged labels to the newly loaded eval set.", "success");
+      } catch (error) {
+        console.warn("Could not apply staged labels", error);
+      }
+    }
+
+    function getCurrentCase() {
+      return state.cases[state.currentIndex] || null;
+    }
+
+    function getCurrentAnnotation() {
+      const current = getCurrentCase();
+      return current ? state.annotationsById[current.id] : null;
+    }
+
+    function render() {
+      renderProgress();
+      renderCase();
+      renderAnalysis();
+      updateSessionInfo();
+      updateExportInfo();
+      updateButtonStates();
+    }
+
+    function renderProgress() {
+      const annotations = Object.values(state.annotationsById);
+      const completed = annotations.filter((item) => item.status === "complete").length;
+      const skipped = annotations.filter((item) => item.status === "skipped").length;
+      const total = state.cases.length;
+      const remaining = Math.max(total - completed - skipped, 0);
+
+      els.metricCompleted.textContent = String(completed);
+      els.metricSkipped.textContent = String(skipped);
+      els.metricRemaining.textContent = String(remaining);
+      els.metricCurrent.textContent = total ? (state.currentIndex + 1) + " / " + total : "0 / 0";
+      els.healthSummary.textContent = total
+        ? completed + " complete, " + skipped + " skipped, " + remaining + " still needing review."
+        : "No active dataset.";
+    }
+
+    function renderCase() {
+      const evalCase = getCurrentCase();
+      const annotation = getCurrentAnnotation();
+      if (!evalCase || !annotation) {
+        els.metaId.textContent = "-";
+        els.metaCategory.textContent = "-";
+        els.metaDomainType.textContent = "-";
+        els.promptText.textContent = "Load a dataset to begin.";
+        els.expectedKeywords.innerHTML = "";
+        els.forbiddenSignals.innerHTML = "";
+        els.responseA.textContent = "Load a dataset to begin.";
+        els.responseB.textContent = "Load a dataset to begin.";
+        els.rubricA.innerHTML = "";
+        els.rubricB.innerHTML = "";
+        els.notesInput.value = "";
+        setPairwiseButtons(null);
+        renderTagButtons([]);
+        return;
+      }
+
+      els.metaId.textContent = evalCase.id;
+      els.metaCategory.textContent = evalCase.category;
+      els.metaDomainType.textContent = evalCase.domain + " / " + evalCase.prompt_type;
+      els.promptText.textContent = evalCase.prompt;
+      renderList(els.expectedKeywords, evalCase.expected_keywords, "No expected keywords provided.");
+      renderList(els.forbiddenSignals, evalCase.forbidden_signals, "No forbidden signals provided.");
+
+      const textA = evalCase.models[annotation.display_order.A].text;
+      const textB = evalCase.models[annotation.display_order.B].text;
+      els.responseA.textContent = textA;
+      els.responseB.textContent = textB;
+      els.notesInput.value = annotation.notes?.comment || "";
+
+      renderRubric("A", els.rubricA, annotation.rubric_scores.A);
+      renderRubric("B", els.rubricB, annotation.rubric_scores.B);
+      setPairwiseButtons(annotation.pairwise_choice);
+      renderTagButtons(annotation.notes?.tags || []);
+    }
+
+    function renderList(target, items, emptyText) {
+      target.innerHTML = "";
+      if (!items.length) {
+        const li = document.createElement("li");
+        li.textContent = emptyText;
+        target.appendChild(li);
+        return;
+      }
+      for (const item of items) {
+        const li = document.createElement("li");
+        li.textContent = item;
+        target.appendChild(li);
+      }
+    }
+
+    function renderRubric(candidate, target, rubricScores) {
+      target.innerHTML = "";
+      for (const field of RUBRIC_FIELDS) {
+        const row = document.createElement("div");
+        row.className = "rubric-row";
+
+        const label = document.createElement("div");
+        label.className = "rubric-label";
+        label.textContent = field.label;
+
+        const buttons = document.createElement("div");
+        buttons.className = "score-buttons";
+
+        for (let score = 1; score <= 5; score += 1) {
+          const button = document.createElement("button");
+          button.className = "score-btn";
+          button.type = "button";
+          button.textContent = String(score);
+          button.dataset.candidate = candidate;
+          button.dataset.field = field.key;
+          button.dataset.score = String(score);
+          if (rubricScores[field.key] === score) {
+            button.classList.add("active");
+          }
+          if (state.focusedRubric.candidate === candidate && state.focusedRubric.field === field.key) {
+            button.classList.add("focused");
+          }
+          button.addEventListener("click", () => {
+            state.focusedRubric = { candidate, field: field.key };
+            setRubricScore(candidate, field.key, score);
+          });
+          buttons.appendChild(button);
+        }
+
+        label.addEventListener("click", () => {
+          state.focusedRubric = { candidate, field: field.key };
+          renderCase();
+        });
+
+        row.appendChild(label);
+        row.appendChild(buttons);
+        target.appendChild(row);
+      }
+    }
+
+    function renderTagButtons(activeTags) {
+      els.tagButtons.innerHTML = "";
+      for (const tag of FAILURE_TAGS) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "tag-btn";
+        button.textContent = tag;
+        if (activeTags.includes(tag)) {
+          button.classList.add("active");
+        }
+        button.addEventListener("click", () => toggleTag(tag));
+        els.tagButtons.appendChild(button);
+      }
+    }
+
+    function setRubricScore(candidate, fieldKey, score) {
+      const annotation = getCurrentAnnotation();
+      if (!annotation) return;
+      annotation.rubric_scores[candidate][fieldKey] = score;
+      if (annotation.status === "skipped") {
+        annotation.status = "in_progress";
+      }
+      updateAnnotationStatus(annotation);
+      saveToLocalStorage();
+      render();
+    }
+
+    function setPairwiseButtons(choice) {
+      for (const [button, value] of [[els.pairwiseA, "A"], [els.pairwiseTie, "Tie"], [els.pairwiseB, "B"]]) {
+        button.classList.toggle("active", choice === value);
+      }
+    }
+
+    function setPairwiseChoice(choice) {
+      const annotation = getCurrentAnnotation();
+      if (!annotation) return;
+      annotation.pairwise_choice = choice;
+      if (annotation.status === "skipped") {
+        annotation.status = "in_progress";
+      }
+      updateAnnotationStatus(annotation);
+      saveToLocalStorage();
+      render();
+    }
+
+    function toggleTag(tag) {
+      const annotation = getCurrentAnnotation();
+      if (!annotation) return;
+      const currentTags = new Set(annotation.notes?.tags || []);
+      if (currentTags.has(tag)) currentTags.delete(tag);
+      else currentTags.add(tag);
+      annotation.notes = {
+        tags: Array.from(currentTags),
+        comment: annotation.notes?.comment || ""
+      };
+      updateAnnotationStatus(annotation);
+      saveToLocalStorage();
+      renderTagButtons(annotation.notes.tags);
+    }
+
+    function updateNotes(value) {
+      const annotation = getCurrentAnnotation();
+      if (!annotation) return;
+      annotation.notes = {
+        tags: annotation.notes?.tags || [],
+        comment: value
+      };
+      updateAnnotationStatus(annotation);
+      saveToLocalStorage();
+    }
+
+    function toggleSkipCurrent() {
+      const annotation = getCurrentAnnotation();
+      if (!annotation) return;
+      annotation.status = annotation.status === "skipped" ? "pending" : "skipped";
+      if (annotation.status === "skipped") {
+        annotation.labeled_at = new Date().toISOString();
+      }
+      updateAnnotationStatus(annotation);
+      saveToLocalStorage();
+      render();
+    }
+
+    function goToCase(index) {
+      if (!state.cases.length) return;
+      state.currentIndex = Math.max(0, Math.min(index, state.cases.length - 1));
+      saveToLocalStorage();
+      render();
+    }
+
+    function jumpToFirstIncomplete() {
+      const index = state.cases.findIndex((evalCase) => {
+        const annotation = state.annotationsById[evalCase.id];
+        return annotation.status !== "complete" && annotation.status !== "skipped";
+      });
+      if (index === -1) {
+        setBanner("Every case is either complete or explicitly skipped.", "success");
+        return;
+      }
+      goToCase(index);
+    }
+
+    function renderAnalysis() {
+      if (!state.cases.length) {
+        els.winsSummary.textContent = "Load a dataset to see results.";
+        els.rubricSummary.textContent = "No scores yet.";
+        return;
+      }
+
+      const totals = {
+        fine_tuned: { wins: 0, rubricCount: 0, rubricSum: 0 },
+        baseline: { wins: 0, rubricCount: 0, rubricSum: 0 },
+        ties: 0
+      };
+
+      for (const evalCase of state.cases) {
+        const annotation = state.annotationsById[evalCase.id];
+        if (!annotation) continue;
+
+        for (const candidate of ["A", "B"]) {
+          const modelKey = annotation.display_order[candidate];
+          const scores = annotation.rubric_scores[candidate];
+          let candidateSum = 0;
+          let candidateCount = 0;
+          for (const field of RUBRIC_FIELDS) {
+            const value = scores[field.key];
+            if (Number.isInteger(value)) {
+              candidateSum += value;
+              candidateCount += 1;
+            }
+          }
+          if (candidateCount) {
+            totals[modelKey].rubricSum += candidateSum / candidateCount;
+            totals[modelKey].rubricCount += 1;
+          }
+        }
+
+        if (annotation.pairwise_choice === "Tie") {
+          totals.ties += 1;
+        } else if (annotation.pairwise_choice === "A" || annotation.pairwise_choice === "B") {
+          const modelKey = annotation.display_order[annotation.pairwise_choice];
+          totals[modelKey].wins += 1;
+        }
+      }
+
+      const fineWins = totals.fine_tuned.wins;
+      const baseWins = totals.baseline.wins;
+      els.winsSummary.innerHTML =
+        "<strong>Fine-tuned:</strong> " + fineWins +
+        " wins<br><strong>Baseline:</strong> " + baseWins +
+        " wins<br><strong>Ties:</strong> " + totals.ties;
+
+      const fineAvg = totals.fine_tuned.rubricCount
+        ? totals.fine_tuned.rubricSum / totals.fine_tuned.rubricCount
+        : null;
+      const baseAvg = totals.baseline.rubricCount
+        ? totals.baseline.rubricSum / totals.baseline.rubricCount
+        : null;
+      const delta = fineAvg != null && baseAvg != null ? fineAvg - baseAvg : null;
+      const deltaClass = delta == null ? "" : (delta >= 0 ? "delta-positive" : "delta-negative");
+
+      els.rubricSummary.innerHTML =
+        "<strong>Fine-tuned avg:</strong> " + formatMaybeNumber(fineAvg) +
+        "<br><strong>Baseline avg:</strong> " + formatMaybeNumber(baseAvg) +
+        "<br><strong>Delta:</strong> <span class=\"" + deltaClass + "\">" + formatSignedMaybeNumber(delta) + "</span>";
+    }
+
+    function formatMaybeNumber(value) {
+      return value == null ? "n/a" : value.toFixed(2) + " / 5";
+    }
+
+    function formatSignedMaybeNumber(value) {
+      if (value == null) return "n/a";
+      return (value >= 0 ? "+" : "") + value.toFixed(2);
+    }
+
+    function updateSessionInfo() {
+      if (!state.sessionMeta) {
+        els.sessionInfo.textContent = "No active session";
+        return;
+      }
+      els.sessionInfo.innerHTML =
+        "<strong>" + state.sessionMeta.session_id + "</strong><br>" +
+        "Source: " + (state.sourceFileName || "unknown") + "<br>" +
+        "Updated: " + new Date(state.sessionMeta.updated_at).toLocaleString();
+    }
+
+    function updateExportInfo() {
+      if (!state.cases.length) {
+        els.exportInfo.textContent = "Exports are disabled until a dataset is loaded.";
+      } else {
+        els.exportInfo.textContent = state.cases.length + " cases ready for export.";
+      }
+    }
+
+    function updateButtonStates() {
+      const hasCases = state.cases.length > 0;
+      const current = getCurrentAnnotation();
+      els.exportBtn.disabled = !hasCases;
+      els.jumpBtn.disabled = !hasCases;
+      els.prevBtn.disabled = !hasCases || state.currentIndex === 0;
+      els.nextBtn.disabled = !hasCases || state.currentIndex >= state.cases.length - 1;
+      els.skipBtn.disabled = !hasCases;
+      els.skipBtn.textContent = current?.status === "skipped" ? "Unskip Case" : "Mark Skipped / Needs Review";
+    }
+
+    function exportLabels() {
+      if (!state.cases.length || !state.sessionMeta) return;
+      const payload = buildExportPayload();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "human_labels.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      saveToLocalStorage();
+      setBanner("Exported human_labels.json", "success");
+    }
+
+    function resetSession() {
+      const confirmed = window.confirm("Reset the current labeling session and clear autosaved browser state?");
+      if (!confirmed) return;
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEY + "-labels-staging");
+      state.cases = [];
+      state.currentIndex = 0;
+      state.annotationsById = {};
+      state.sessionMeta = null;
+      state.sourceFileName = "";
+      state.focusedRubric = { candidate: "A", field: RUBRIC_FIELDS[0].key };
+      render();
+      setBanner("Session reset. Load an eval JSON file to begin again.");
+    }
+
+    function handleKeydown(event) {
+      const targetTag = event.target.tagName.toLowerCase();
+      const inTextArea = targetTag === "textarea" || targetTag === "input";
+      if (!state.cases.length) return;
+
+      if (!inTextArea && event.key >= "1" && event.key <= "5") {
+        event.preventDefault();
+        const score = Number(event.key);
+        setRubricScore(state.focusedRubric.candidate, state.focusedRubric.field, score);
+        return;
+      }
+      if (!inTextArea && (event.key === "a" || event.key === "A")) {
+        event.preventDefault();
+        setPairwiseChoice("A");
+        return;
+      }
+      if (!inTextArea && (event.key === "b" || event.key === "B")) {
+        event.preventDefault();
+        setPairwiseChoice("B");
+        return;
+      }
+      if (!inTextArea && (event.key === "t" || event.key === "T")) {
+        event.preventDefault();
+        setPairwiseChoice("Tie");
+        return;
+      }
+      if (!inTextArea && event.key === "ArrowLeft") {
+        event.preventDefault();
+        goToCase(state.currentIndex - 1);
+        return;
+      }
+      if (!inTextArea && event.key === "ArrowRight") {
+        event.preventDefault();
+        goToCase(state.currentIndex + 1);
+      }
+    }
+
+    els.evalFileInput.addEventListener("change", handleEvalFile);
+    els.labelsFileInput.addEventListener("change", handleLabelsFile);
+    els.restoreBtn.addEventListener("click", restoreFromLocalStorage);
+    els.resetBtn.addEventListener("click", resetSession);
+    els.exportBtn.addEventListener("click", exportLabels);
+    els.jumpBtn.addEventListener("click", jumpToFirstIncomplete);
+    els.prevBtn.addEventListener("click", () => goToCase(state.currentIndex - 1));
+    els.nextBtn.addEventListener("click", () => goToCase(state.currentIndex + 1));
+    els.skipBtn.addEventListener("click", toggleSkipCurrent);
+    els.pairwiseA.addEventListener("click", () => setPairwiseChoice("A"));
+    els.pairwiseTie.addEventListener("click", () => setPairwiseChoice("Tie"));
+    els.pairwiseB.addEventListener("click", () => setPairwiseChoice("B"));
+    els.notesInput.addEventListener("input", (event) => updateNotes(event.target.value));
+    window.addEventListener("keydown", handleKeydown);
+
+    render();
+    maybeApplyStagedLabels();
+  </script>
+</body>
+</html>

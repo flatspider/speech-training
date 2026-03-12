@@ -1,0 +1,64 @@
+[
+  {
+    "id": "policy_economy_01",
+    "category": "domain_control",
+    "prompt_type": "policy",
+    "domain": "Economy",
+    "prompt": "[POLICY: Economy] My friends, the prosperity of a nation cannot be measured by speculation alone, for",
+    "expected_keywords": ["recovery", "banking", "credit", "working families"],
+    "forbidden_signals": ["as an AI", "startup", "viral thread"],
+    "models": {
+      "fine_tuned": {
+        "text": "My friends, the prosperity of a nation cannot be measured by speculation alone, for the true wealth of America rests in the security of her homes, the steadiness of her work, and the confidence of her people. The task before us is to restore sound credit, honest banking, and the purchasing power of the common citizen.",
+        "raw_text": "[POLICY: Economy] My friends, the prosperity of a nation cannot be measured by speculation alone, for the true wealth of America rests in the security of her homes, the steadiness of her work, and the confidence of her people. The task before us is to restore sound credit, honest banking, and the purchasing power of the common citizen.",
+        "generation_meta": {
+          "temperature": 0.85,
+          "top_p": 0.92,
+          "max_new_tokens": 220,
+          "seed": 42
+        }
+      },
+      "baseline": {
+        "text": "My friends, the prosperity of a nation cannot be measured by speculation alone, for markets move quickly and confidence is often difficult to understand. Many people look at the numbers and hope conditions improve, but the situation remains uncertain and complex.",
+        "raw_text": "[POLICY: Economy] My friends, the prosperity of a nation cannot be measured by speculation alone, for markets move quickly and confidence is often difficult to understand. Many people look at the numbers and hope conditions improve, but the situation remains uncertain and complex.",
+        "generation_meta": {
+          "temperature": 0.85,
+          "top_p": 0.92,
+          "max_new_tokens": 220,
+          "seed": 42
+        }
+      }
+    }
+  },
+  {
+    "id": "iconic_quote_01",
+    "category": "iconic_quote",
+    "prompt_type": "iconic",
+    "domain": "Government",
+    "prompt": "[ICONIC] Let it be said of this generation",
+    "expected_keywords": ["courage", "democracy", "duty"],
+    "forbidden_signals": ["hashtag", "AI tools", "productivity app"],
+    "models": {
+      "fine_tuned": {
+        "text": "Let it be said of this generation that it kept faith with democracy when ease would have counseled surrender, and chose duty over fear.",
+        "raw_text": "[ICONIC] Let it be said of this generation that it kept faith with democracy when ease would have counseled surrender, and chose duty over fear.",
+        "generation_meta": {
+          "temperature": 0.95,
+          "top_p": 0.9,
+          "max_new_tokens": 70,
+          "seed": 42
+        }
+      },
+      "baseline": {
+        "text": "Let it be said of this generation that it wanted progress and hoped for a better future in uncertain times.",
+        "raw_text": "[ICONIC] Let it be said of this generation that it wanted progress and hoped for a better future in uncertain times.",
+        "generation_meta": {
+          "temperature": 0.95,
+          "top_p": 0.9,
+          "max_new_tokens": 70,
+          "seed": 42
+        }
+      }
+    }
+  }
+]
