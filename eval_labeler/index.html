@@ -482,9 +482,10 @@
           </p>
         </div>
         <div class="pill-row">
-          <div class="pill">Keys: <strong>1-5</strong> score, <strong>A/T/B</strong> winner, arrows navigate</div>
+          <div class="pill">Keys: <strong>A/T/B</strong> winner, arrows navigate</div>
           <div class="pill">Autosaves to browser storage</div>
           <div class="pill">No backend required</div>
+          <button id="quickModeBtn" class="pill" style="cursor:pointer; font-weight:600;">Quick Mode: ON</button>
         </div>
       </div>
       <div id="statusBanner" class="status-banner">Load an eval JSON file to begin.</div>
@@ -493,11 +494,13 @@
           <label for="evalFileInput">Eval input JSON</label>
           <input id="evalFileInput" type="file" accept=".json,application/json">
           <div class="small muted">Expected file: <code>fdr_eval_generations.json</code></div>
+          <div id="evalFileInfo" class="small muted">No eval file loaded yet.</div>
         </div>
         <div class="control-card">
           <label for="labelsFileInput">Resume labels JSON</label>
           <input id="labelsFileInput" type="file" accept=".json,application/json">
           <div class="small muted">Optional: import a previous <code>human_labels.json</code>.</div>
+          <div id="labelsFileInfo" class="small muted">No labels file loaded yet.</div>
         </div>
         <div class="control-card">
           <div class="small muted">Session</div>
@@ -677,7 +680,9 @@
       annotationsById: {},
       sessionMeta: null,
       sourceFileName: "",
-      focusedRubric: { candidate: "A", field: RUBRIC_FIELDS[0].key }
+      storageAvailable: true,
+      focusedRubric: { candidate: "A", field: RUBRIC_FIELDS[0].key },
+      quickMode: true
     };
 
     const els = {
@@ -686,6 +691,8 @@
       exportInfo: document.getElementById("exportInfo"),
       evalFileInput: document.getElementById("evalFileInput"),
       labelsFileInput: document.getElementById("labelsFileInput"),
+      evalFileInfo: document.getElementById("evalFileInfo"),
+      labelsFileInfo: document.getElementById("labelsFileInfo"),
       restoreBtn: document.getElementById("restoreBtn"),
       resetBtn: document.getElementById("resetBtn"),
       exportBtn: document.getElementById("exportBtn"),
@@ -714,7 +721,8 @@
       pairwiseTie: document.getElementById("pairwiseTie"),
       pairwiseB: document.getElementById("pairwiseB"),
       tagButtons: document.getElementById("tagButtons"),
-      notesInput: document.getElementById("notesInput")
+      notesInput: document.getElementById("notesInput"),
+      quickModeBtn: document.getElementById("quickModeBtn")
     };
 
     function makeUuid() {
@@ -742,6 +750,36 @@
     function setBanner(message, type = "") {
       els.statusBanner.textContent = message;
       els.statusBanner.className = "status-banner" + (type ? " " + type : "");
+    }
+
+    function safeStorageGet(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch (error) {
+        state.storageAvailable = false;
+        return null;
+      }
+    }
+
+    function safeStorageSet(key, value) {
+      try {
+        localStorage.setItem(key, value);
+        state.storageAvailable = true;
+        return true;
+      } catch (error) {
+        state.storageAvailable = false;
+        return false;
+      }
+    }
+
+    function safeStorageRemove(key) {
+      try {
+        localStorage.removeItem(key);
+        return true;
+      } catch (error) {
+        state.storageAvailable = false;
+        return false;
+      }
     }
 
     function defaultRubricScores() {
@@ -846,6 +884,7 @@
       if (!annotation) return false;
       if (annotation.status === "skipped") return false;
       if (!annotation.pairwise_choice) return false;
+      if (state.quickMode) return true;
       for (const candidate of ["A", "B"]) {
         for (const field of RUBRIC_FIELDS) {
           const value = annotation.rubric_scores?.[candidate]?.[field.key];
@@ -922,14 +961,18 @@
         sessionMeta: state.sessionMeta,
         sourceFileName: state.sourceFileName
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      safeStorageSet(STORAGE_KEY, JSON.stringify(payload));
       updateSessionInfo();
     }
 
     function restoreFromLocalStorage() {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = safeStorageGet(STORAGE_KEY);
       if (!raw) {
-        setBanner("No autosaved session was found in this browser.", "error");
+        if (!state.storageAvailable) {
+          setBanner("Browser storage is unavailable here, so autosave cannot be restored. You can still load and export JSON files manually.", "error");
+        } else {
+          setBanner("No autosaved session was found in this browser.", "error");
+        }
         return;
       }
       try {
@@ -972,15 +1015,15 @@
         state.annotationsById = {};
         state.sourceFileName = file.name;
         state.sessionMeta = buildSessionMeta(file.name);
+        els.evalFileInfo.textContent = "Loaded eval file: " + file.name;
         hydrateMissingAnnotations();
         saveToLocalStorage();
         render();
         maybeApplyStagedLabels();
         setBanner("Loaded " + cases.length + " eval cases.", "success");
       } catch (error) {
+        els.evalFileInfo.textContent = "Eval file failed to load: " + file.name;
         setBanner("Could not load eval file: " + error.message, "error");
-      } finally {
-        event.target.value = "";
       }
     }
 
@@ -994,16 +1037,17 @@
         }
         if (!state.cases.length) {
           state.sessionMeta = buildSessionMeta(parsed.source_file_name || "", parsed);
+          els.labelsFileInfo.textContent = "Loaded labels file: " + file.name;
           setBanner("Labels loaded. Now load the matching eval JSON to resume rendering the cases.", "success");
-          localStorage.setItem(STORAGE_KEY + "-labels-staging", JSON.stringify(parsed));
+          safeStorageSet(STORAGE_KEY + "-labels-staging", JSON.stringify(parsed));
           return;
         }
+        els.labelsFileInfo.textContent = "Loaded labels file: " + file.name;
         mergeLabelsIntoState(parsed);
         setBanner("Imported prior labels into the current session.", "success");
       } catch (error) {
+        els.labelsFileInfo.textContent = "Labels file failed to load: " + file.name;
         setBanner("Could not load labels file: " + error.message, "error");
-      } finally {
-        event.target.value = "";
       }
     }
 
@@ -1021,12 +1065,12 @@
     }
 
     function maybeApplyStagedLabels() {
-      const raw = localStorage.getItem(STORAGE_KEY + "-labels-staging");
+      const raw = safeStorageGet(STORAGE_KEY + "-labels-staging");
       if (!raw || !state.cases.length) return;
       try {
         const parsed = JSON.parse(raw);
         mergeLabelsIntoState(parsed);
-        localStorage.removeItem(STORAGE_KEY + "-labels-staging");
+        safeStorageRemove(STORAGE_KEY + "-labels-staging");
         setBanner("Matched staged labels to the newly loaded eval set.", "success");
       } catch (error) {
         console.warn("Could not apply staged labels", error);
@@ -1049,6 +1093,19 @@
       updateSessionInfo();
       updateExportInfo();
       updateButtonStates();
+      updateQuickModeUI();
+    }
+
+    function updateQuickModeUI() {
+      els.quickModeBtn.textContent = "Quick Mode: " + (state.quickMode ? "ON" : "OFF");
+      els.quickModeBtn.style.background = state.quickMode ? "var(--accent-soft)" : "";
+      els.rubricA.style.display = state.quickMode ? "none" : "";
+      els.rubricB.style.display = state.quickMode ? "none" : "";
+    }
+
+    function toggleQuickMode() {
+      state.quickMode = !state.quickMode;
+      render();
     }
 
     function renderProgress() {
@@ -1209,6 +1266,9 @@
       updateAnnotationStatus(annotation);
       saveToLocalStorage();
       render();
+      if (state.quickMode && state.currentIndex < state.cases.length - 1) {
+        goToCase(state.currentIndex + 1);
+      }
     }
 
     function toggleTag(tag) {
@@ -1345,12 +1405,16 @@
     function updateSessionInfo() {
       if (!state.sessionMeta) {
         els.sessionInfo.textContent = "No active session";
+        els.evalFileInfo.textContent = "No eval file loaded yet.";
+        els.labelsFileInfo.textContent = "No labels file loaded yet.";
         return;
       }
       els.sessionInfo.innerHTML =
         "<strong>" + state.sessionMeta.session_id + "</strong><br>" +
         "Source: " + (state.sourceFileName || "unknown") + "<br>" +
-        "Updated: " + new Date(state.sessionMeta.updated_at).toLocaleString();
+        "Updated: " + new Date(state.sessionMeta.updated_at).toLocaleString() +
+        "<br>Autosave: " + (state.storageAvailable ? "available" : "unavailable");
+      els.evalFileInfo.textContent = "Loaded eval file: " + (state.sourceFileName || "unknown");
     }
 
     function updateExportInfo() {
@@ -1389,8 +1453,8 @@
     function resetSession() {
       const confirmed = window.confirm("Reset the current labeling session and clear autosaved browser state?");
       if (!confirmed) return;
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(STORAGE_KEY + "-labels-staging");
+      safeStorageRemove(STORAGE_KEY);
+      safeStorageRemove(STORAGE_KEY + "-labels-staging");
       state.cases = [];
       state.currentIndex = 0;
       state.annotationsById = {};
@@ -1438,6 +1502,7 @@
       }
     }
 
+    els.quickModeBtn.addEventListener("click", toggleQuickMode);
     els.evalFileInput.addEventListener("change", handleEvalFile);
     els.labelsFileInput.addEventListener("change", handleLabelsFile);
     els.restoreBtn.addEventListener("click", restoreFromLocalStorage);
