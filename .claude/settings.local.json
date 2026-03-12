@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:millercenter.org)",
+      "Bash(.venv/bin/python:*)",
+      "WebFetch(domain:www.presidency.ucsb.edu)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh api:*)"
+    ]
+  }
+}
